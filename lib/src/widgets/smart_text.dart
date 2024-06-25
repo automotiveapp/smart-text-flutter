@@ -15,6 +15,7 @@ class SmartText extends StatefulWidget {
     this.dateTimeConfig,
     this.emailConfig,
     this.phoneConfig,
+    this.mentionConfig,
     this.urlConfig,
     this.strutStyle,
     this.locale,
@@ -52,6 +53,9 @@ class SmartText extends StatefulWidget {
 
   /// The configuration for setting the [TextStyle] and what happens when the email link is clicked
   final ItemSpanConfig? emailConfig;
+
+  /// The configuration for setting the [TextStyle] and what happens when the mention link is clicked
+  final ItemSpanConfig? mentionConfig;
 
   final StrutStyle? strutStyle;
 
@@ -107,96 +111,74 @@ class _SmartTextState extends State<SmartText> {
     return FutureBuilder<List<ItemSpan>>(
       future: classifyTextFuture,
       builder: (context, snapshot) {
+        List<InlineSpan> inlineSpanList = [];
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Text(
-            widget.text,
-            style: widget.config?.textStyle,
-            strutStyle: widget.strutStyle,
-            locale: widget.locale,
-            textAlign: widget.textAlign,
-            maxLines: widget.maxLines,
-            overflow: widget.overflow,
-            selectionColor: widget.selectionColor,
-            semanticsLabel: widget.semanticsLabel,
-            softWrap: widget.softWrap,
-            textDirection: widget.textDirection,
-            textHeightBehavior: widget.textHeightBehavior,
-            textScaler: widget.textScaler,
-            textWidthBasis: widget.textWidthBasis,
-          );
+          inlineSpanList.addAll(getTextInlineSpans(ItemSpan(
+            text: widget.text,
+            type: ItemSpanType.text,
+            rawValue: widget.text,
+          )));
+        } else {
+          for (final span in snapshot.data!) {
+            switch (span.type) {
+              case ItemSpanType.text:
+                inlineSpanList.addAll(getTextInlineSpans(span));
+              case ItemSpanType.address:
+                inlineSpanList.add(TextSpan(
+                  text: span.text,
+                  style: span.defaultConfig.textStyle?.merge(
+                    widget.addressConfig?.textStyle,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap =
+                        () => _handleItemSpanTap(span, widget.addressConfig),
+                ));
+              case ItemSpanType.email:
+                inlineSpanList.add(TextSpan(
+                  text: span.text,
+                  style: span.defaultConfig.textStyle?.merge(
+                    widget.emailConfig?.textStyle,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap =
+                        () => _handleItemSpanTap(span, widget.emailConfig),
+                ));
+              case ItemSpanType.phone:
+                inlineSpanList.add(TextSpan(
+                  text: span.text,
+                  style: span.defaultConfig.textStyle?.merge(
+                    widget.phoneConfig?.textStyle,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap =
+                        () => _handleItemSpanTap(span, widget.phoneConfig),
+                ));
+              case ItemSpanType.datetime:
+                inlineSpanList.add(TextSpan(
+                  text: span.text,
+                  style: span.defaultConfig.textStyle?.merge(
+                    widget.dateTimeConfig?.textStyle,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap =
+                        () => _handleItemSpanTap(span, widget.dateTimeConfig),
+                ));
+              case ItemSpanType.url:
+                inlineSpanList.add(TextSpan(
+                  text: span.text,
+                  style: span.defaultConfig.textStyle?.merge(
+                    widget.urlConfig?.textStyle,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => _handleItemSpanTap(span, widget.urlConfig),
+                ));
+            }
+          }
         }
-
         return Text.rich(
           TextSpan(
-            children: [
-              for (final span in snapshot.data!)
-                switch (span.type) {
-                  ItemSpanType.text => TextSpan(
-                      text: span.text,
-                      style: span.defaultConfig.textStyle?.merge(
-                        widget.config?.textStyle,
-                      ),
-                    ),
-                  ItemSpanType.address => TextSpan(
-                      text: span.text,
-                      style: span.defaultConfig.textStyle?.merge(
-                        widget.addressConfig?.textStyle,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () => _handleItemSpanTap(
-                              span,
-                              widget.addressConfig,
-                            ),
-                    ),
-                  ItemSpanType.email => TextSpan(
-                      text: span.text,
-                      style: span.defaultConfig.textStyle?.merge(
-                        widget.emailConfig?.textStyle,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () => _handleItemSpanTap(
-                              span,
-                              widget.emailConfig,
-                            ),
-                    ),
-                  ItemSpanType.phone => TextSpan(
-                      text: span.text,
-                      style: span.defaultConfig.textStyle?.merge(
-                        widget.phoneConfig?.textStyle,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () => _handleItemSpanTap(
-                              span,
-                              widget.phoneConfig,
-                            ),
-                    ),
-                  ItemSpanType.datetime => TextSpan(
-                      text: span.text,
-                      style: span.defaultConfig.textStyle?.merge(
-                        widget.dateTimeConfig?.textStyle,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () => _handleItemSpanTap(
-                              span,
-                              widget.dateTimeConfig,
-                            ),
-                    ),
-                  ItemSpanType.url => TextSpan(
-                      text: span.text,
-                      style: span.defaultConfig.textStyle?.merge(
-                        widget.urlConfig?.textStyle,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () => _handleItemSpanTap(
-                              span,
-                              widget.urlConfig,
-                            ),
-                    ),
-                },
-            ],
-            style: const TextStyle().merge(
-              widget.config?.textStyle,
-            ),
+            children: inlineSpanList,
+            style: const TextStyle().merge(widget.config?.textStyle),
           ),
           strutStyle: widget.strutStyle,
           locale: widget.locale,
@@ -221,5 +203,66 @@ class _SmartTextState extends State<SmartText> {
     } else {
       span.defaultConfig.onClicked?.call(span.rawValue);
     }
+  }
+
+  List<String> splitMentioned(String input) {
+    RegExp regex = RegExp(r"((^)|(( )+))@\w+(($)|(( )+))");
+    Iterable<Match> matches = regex.allMatches(input);
+    List<String> parts = [];
+    int lastEnd = 0;
+    for (Match match in matches) {
+      int start = match.start;
+      int end = match.end;
+      if (start > lastEnd) {
+        parts.add(input.substring(lastEnd, start));
+      }
+      parts.add(input.substring(start, end));
+      lastEnd = end;
+    }
+    if (lastEnd < input.length) {
+      parts.add(input.substring(lastEnd));
+    }
+    return parts;
+  }
+
+  List<InlineSpan> getTextInlineSpans(ItemSpan span) {
+    return splitMentioned(span.text).map((text) {
+      if (text.trim().startsWith('@')) {
+        final int leftPadding = text.length - text.trimLeft().length;
+        final int rightPadding = text.length - text.trimRight().length;
+        return TextSpan(
+          text: List.generate(leftPadding, (_) => " ").join(),
+          children: [
+            TextSpan(
+              text: text.trim(),
+              style: span.defaultConfig.textStyle?.merge(
+                widget.mentionConfig?.textStyle,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () => _handleItemSpanTap(
+                      ItemSpan(
+                        text: text.trim(),
+                        type: span.type,
+                        rawValue: text.trim(),
+                      ),
+                      widget.mentionConfig,
+                    ),
+            ),
+            TextSpan(
+              text: List.generate(rightPadding, (_) => " ").join(),
+            )
+          ],
+          style: span.defaultConfig.textStyle?.merge(
+            widget.config?.textStyle,
+          ),
+        );
+      }
+      return TextSpan(
+        text: text,
+        style: span.defaultConfig.textStyle?.merge(
+          widget.config?.textStyle,
+        ),
+      );
+    }).toList();
   }
 }
