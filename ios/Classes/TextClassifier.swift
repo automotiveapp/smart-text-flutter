@@ -72,10 +72,18 @@ class AppleTextClassifier : TextClassifier {
             previousEnd = link.end
         }
         
-        let textAfter = String(text[text.index(text.startIndex, offsetBy: links.last!.end)...])
+       if let lastLink = links.last {
+    if lastLink.end <= text.count { 
+        let startIndex = text.index(text.startIndex, offsetBy: lastLink.end)
+        let textAfter = String(text[startIndex...])
+
         if !textAfter.isEmpty {
-            resultList.append(ItemSpan(text: textAfter, type: "text",  rawValue: textAfter))
+            resultList.append(ItemSpan(text: textAfter, type: "text", rawValue: textAfter))
         }
+    } else {
+        print("Invalid string indices: link.start = \(lastLink.start), link.end = \(lastLink.end), text length = \(text.count)")
+    }
+}
         
         return resultList
     }
