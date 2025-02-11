@@ -59,8 +59,16 @@ class AppleTextClassifier : TextClassifier {
                 rawValue = url
             }
             
-            let linkSpan = ItemSpan(text: String(text[text.index(text.startIndex, offsetBy: link.start)..<text.index(text.startIndex, offsetBy: link.end)]), type: linkType, rawValue: rawValue)
-            resultList.append(linkSpan)
+            let startIndex = text.index(text.startIndex, offsetBy: link.start, limitedBy: text.endIndex)
+            let endIndex = text.index(text.startIndex, offsetBy: link.end, limitedBy: text.endIndex)
+
+            if let startIndex = startIndex, let endIndex = endIndex, startIndex <= endIndex {
+                let linkText = String(text[startIndex..<endIndex])
+                let linkSpan = ItemSpan(text: linkText, type: linkType, rawValue: rawValue)
+                resultList.append(linkSpan)
+            } else {
+                print("Invalid string indices: link.start = \(link.start), link.end = \(link.end)")
+            }
             previousEnd = link.end
         }
         
