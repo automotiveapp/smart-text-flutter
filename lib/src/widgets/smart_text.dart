@@ -4,7 +4,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:smart_text_flutter/src/extensions/item_span_default_config.dart';
 import 'package:smart_text_flutter/smart_text_flutter.dart';
+import 'package:smart_text_flutter/src/extensions/string.dart';
 
+// TODO: Merge the SmartText and SmartSelectableText widgets
 /// The smart text which automatically detect links in text and renders them
 class SmartText extends StatefulWidget {
   const SmartText(
@@ -29,6 +31,7 @@ class SmartText extends StatefulWidget {
     this.textHeightBehavior,
     this.textScaler,
     this.textWidthBasis,
+    this.humanize = false,
   });
 
   /// The text to linkify
@@ -80,6 +83,8 @@ class SmartText extends StatefulWidget {
   final ui.TextHeightBehavior? textHeightBehavior;
 
   final Color? selectionColor;
+
+  final bool humanize;
 
   @override
   State<SmartText> createState() => _SmartTextState();
@@ -165,7 +170,7 @@ class _SmartTextState extends State<SmartText> {
                 ));
               case ItemSpanType.url:
                 inlineSpanList.add(TextSpan(
-                  text: span.text,
+                  text: span.text.humanizeUrl(widget.humanize),
                   style: span.defaultConfig.textStyle?.merge(
                     widget.urlConfig?.textStyle,
                   ),
