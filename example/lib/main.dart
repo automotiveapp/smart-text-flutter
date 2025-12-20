@@ -51,6 +51,7 @@ class _SmartTextFlutterExampleState extends State<SmartTextFlutterExample> {
                     margin: const EdgeInsets.all(8),
                     child: SmartText(
                       messageTexts[index],
+                      mentionedUsers: const [],
                     ),
                   ),
                 ),

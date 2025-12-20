@@ -4,7 +4,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:smart_text_flutter/src/extensions/item_span_default_config.dart';
 import 'package:smart_text_flutter/smart_text_flutter.dart';
-import 'package:smart_text_flutter/src/extensions/string.dart';
 
 // TODO: Merge the SmartText and SmartSelectableText widgets
 /// The smart text which automatically detect links in text and renders them
@@ -12,6 +11,7 @@ class SmartText extends StatefulWidget {
   const SmartText(
     this.text, {
     super.key,
+    required this.mentionedUsers,
     this.config,
     this.addressConfig,
     this.dateTimeConfig,
@@ -37,6 +37,9 @@ class SmartText extends StatefulWidget {
   /// The text to linkify
   /// This text will be classified and the links will be highlighted
   final String text;
+
+  /// The list of mentioned users. This is used to highlight the mentioned users.
+  final List<String> mentionedUsers;
 
   /// The configuration for setting the [TextStyle] and onClicked method
   /// This affects the whole text
@@ -211,7 +214,7 @@ class _SmartTextState extends State<SmartText> {
   }
 
   List<String> splitMentioned(String input) {
-    RegExp regex = RegExp(r"((^)|(( )+))@\w+(($)|(( )+))");
+    RegExp regex = RegExp(r"((^)|(( )+))@[\w._]+(($)|(( )+))"); // old RegExp(r"((^)|(( )+))@\w+(($)|(( )+))");
     Iterable<Match> matches = regex.allMatches(input);
     List<String> parts = [];
     int lastEnd = 0;
@@ -235,32 +238,37 @@ class _SmartTextState extends State<SmartText> {
       if (text.trim().startsWith('@')) {
         final int leftPadding = text.length - text.trimLeft().length;
         final int rightPadding = text.length - text.trimRight().length;
-        return TextSpan(
-          text: List.generate(leftPadding, (_) => " ").join(),
-          children: [
-            TextSpan(
-              text: text.trim(),
-              style: span.defaultConfig.textStyle?.merge(
-                widget.mentionConfig?.textStyle,
-              ),
-              recognizer: TapGestureRecognizer()
-                ..onTap = () => _handleItemSpanTap(
-                      ItemSpan(
-                        text: text.trim(),
-                        type: span.type,
-                        rawValue: text.trim(),
+        final String username = text.trim().substring(1); // Remove @ symbol
+
+        // Only highlight if username is in mentionedUsers list
+        if (widget.mentionedUsers.contains(username)) {
+          return TextSpan(
+            text: List.generate(leftPadding, (_) => " ").join(),
+            children: [
+              TextSpan(
+                text: text.trim(),
+                style: span.defaultConfig.textStyle?.merge(
+                  widget.mentionConfig?.textStyle,
+                ),
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () => _handleItemSpanTap(
+                        ItemSpan(
+                          text: text.trim(),
+                          type: span.type,
+                          rawValue: text.trim(),
+                        ),
+                        widget.mentionConfig,
                       ),
-                      widget.mentionConfig,
-                    ),
+              ),
+              TextSpan(
+                text: List.generate(rightPadding, (_) => " ").join(),
+              )
+            ],
+            style: span.defaultConfig.textStyle?.merge(
+              widget.config?.textStyle,
             ),
-            TextSpan(
-              text: List.generate(rightPadding, (_) => " ").join(),
-            )
-          ],
-          style: span.defaultConfig.textStyle?.merge(
-            widget.config?.textStyle,
-          ),
-        );
+          );
+        }
       }
       return TextSpan(
         text: text,
